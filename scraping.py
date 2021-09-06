@@ -5,6 +5,9 @@ import pandas as pd
 import datetime as dt
 from webdriver_manager.chrome import ChromeDriverManager
 
+from Mission_to_Mars_Challenge import hemisphere_image_urls, title_list, photos_list
+
+
 def scrape_all():
     # Set up Splinter & Initiate headless driver for deployment
     executable_path = {'executable_path': ChromeDriverManager().install()}
@@ -18,7 +21,8 @@ def scrape_all():
           "news_paragraph": news_paragraph,
           "featured_image": featured_image(browser),
           "facts": mars_facts(),
-          "last_modified": dt.datetime.now()
+          "last_modified": dt.datetime.now(),
+          "hemispheres": hemisphere_data(browser),
     }
 
     # Stop webdriver and return data
@@ -48,12 +52,12 @@ def mars_news(browser):
         news_title = slide_elem.find('div', class_='content_title').get_text()
 
         # Use the parent element to find the paragraph text
-        news_p = slide_elem.find('div', class_='article_teaser_body').get_text()
+        news_paragraph = slide_elem.find('div', class_='article_teaser_body').get_text()
 
     except AttributeError:
         return None, None
 
-    return news_title, news_p
+    return news_title, news_paragraph
 
 # ## JPL Space Images Featured Image
 
@@ -85,6 +89,9 @@ def featured_image(browser):
 
     return img_url
 
+
+# ## Mars Hemisphere Images and Titles
+
 # ## Mars Facts
 # Define Mars website function
 def mars_facts():
@@ -101,6 +108,56 @@ def mars_facts():
     df.set_index('Description', inplace=True)
 
     return df.to_html()
+
+
+# Define website function
+def hemisphere_data(browser):
+
+    # Use browser to visit the URL
+    url = 'https://marshemispheres.com/'
+    browser.visit(url)
+
+    # Create a list to hold the images and titles.
+    hemisphere_image_urls = []
+
+    # Retrieve html from webpage and parse with BeautifulSoup
+    # html = browser.html
+    # soup = soup(html, "html.parser")
+
+    # Create empty lists to place iteration values
+    title_list = []
+    photos_list = []
+
+    # Find numbers of articles to iterate
+    number_articles = len(browser.links.find_by_partial_text('Enhanced'))
+
+    for x in range(0, number_articles):
+        # Navigate browser to each article and append titles to a list
+        browser.links.find_by_partial_text('Enhanced')[x].click()
+        temp_title = browser.find_by_tag('h2')[0]
+        title_list.append(temp_title.value)
+
+        # Navigate browser to .jpg image and append link to a list
+        browser.links.find_by_partial_text('Sample').click()
+        temp_html = browser.windows[1].url
+        photos_list.append(temp_html)
+
+        # Close opened tab
+        browser.windows[1].close()
+
+        # Navigate browser to main page
+        browser.back()
+
+        continue
+
+    # Convert lists into a dictionary
+    hemisphere_image_urls.append({
+        "img_url": photos_list,
+        "title": title_list
+    })
+
+    return hemisphere_image_urls
+
 
 if __name__ == "__main__":
 
